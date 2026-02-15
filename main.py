@@ -23,7 +23,11 @@ async def main():
     table.add_column("Keyword", style="cyan")
     table.add_column("Limit", style="magenta")
     table.add_column("Topildi", style="green")
+    table.add_column("Yangi", style="green")
+    table.add_column("Yangilandi", style="yellow")
     table.add_column("Status", style="bold")
+
+    total_found = total_inserted = total_updated = 0
 
     for task in tasks:
         keyword = task["keyword"]
@@ -32,15 +36,27 @@ async def main():
         console.rule(f"[blue]{keyword} (limit: {limit})[/blue]")
 
         try:
-            count = await scrape_keyword(keyword, limit)
-            status = "[green]Muvaffaqiyat[/green]" if count > 0 else "[yellow]Topilmadi[/yellow]"
-        except Exception as e:
-            count = 0
-            status = f"[red]Xato: {str(e)[:50]}[/red]"
+            stats = await scrape_keyword(keyword, limit)
+            found = int(stats.get("found", 0))
+            inserted = int(stats.get("inserted", 0))
+            updated = int(stats.get("updated", 0))
 
-        table.add_row(keyword, str(limit), str(count), status)
+            total_found += found
+            total_inserted += inserted
+            total_updated += updated
+
+            status = "[green]Muvaffaqiyat[/green]" if found > 0 else "[yellow]Topilmadi[/yellow]"
+        except Exception as e:
+            found = inserted = updated = 0
+            status = f"[red]Xato: {str(e)[:70]}[/red]"
+
+        table.add_row(keyword, str(limit), str(found), str(inserted), str(updated), status)
 
     console.print(table)
+    console.print(
+        f"[bold]Jami:[/bold] found={total_found} | inserted={total_inserted} | updated={total_updated}"
+    )
+
     await db.close()
 
 

@@ -3,6 +3,7 @@ playwright-stealth>=1.0.6
 beautifulsoup4>=4.12.3
 lxml>=5.3.0
 motor>=3.5.1
+pymongo>=4.6.0
 python-dotenv>=1.0.1
 pydantic-settings>=2.5.2
 loguru>=0.7.2
