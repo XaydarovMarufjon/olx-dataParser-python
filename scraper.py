@@ -4,27 +4,16 @@ import random
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 from urllib.parse import quote_plus
-
 from playwright.async_api import async_playwright, Page
 from bs4 import BeautifulSoup
 from rich.console import Console
-
 from pymongo import UpdateOne
-
 from db import db
 from config import settings
 
-
 console = Console()
 
-
 async def read_keywords(file_path: str = settings.keyword_file) -> List[Dict[str, Any]]:
-    """keywords.txt format:
-
-    lenovo[3]
-    iphone 15[7]
-    divan  # default limit 100
-    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
@@ -60,12 +49,10 @@ def _extract_text(el, selector: str) -> str:
     node = el.select_one(selector)
     return node.get_text(strip=True) if node else ""
 
-
 async def parse_ads(html: str, keyword: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
     ads: List[Dict[str, Any]] = []
 
-    # OLX markup o'zgaruvchan — ko'proq "a[href*='/d/']" eng stabil
     for a in soup.select("a[href*='/d/']"):
         href = a.get("href") or ""
         if not href or "/d/" not in href:
@@ -80,7 +67,7 @@ async def parse_ads(html: str, keyword: str) -> List[Dict[str, Any]]:
             title = _extract_text(container, "h6") or _extract_text(container, "h4")
         title = title or "Sarlavha yo'q"
 
-        # price/location usually near the link; try nearest parents too
+        # price
         parent = a
         for _ in range(3):
             if parent and getattr(parent, "parent", None):
@@ -95,12 +82,14 @@ async def parse_ads(html: str, keyword: str) -> List[Dict[str, Any]]:
         )
         price = price or "Kelishiladi"
 
+        # location
         location = (
             _extract_text(parent, "[data-testid='location']")
             or _extract_text(parent, "[class*='location']")
         )
         location = location or "Joy yo'q"
-
+        
+        # img
         img = parent.select_one("img")
         image = ""
         if img:
@@ -118,7 +107,6 @@ async def parse_ads(html: str, keyword: str) -> List[Dict[str, Any]]:
             }
         )
 
-    # link bo'yicha unique qilish
     unique: Dict[str, Dict[str, Any]] = {}
     for ad in ads:
         unique[ad["link"]] = ad
@@ -140,7 +128,6 @@ async def goto_with_retry(page: Page, url: str, retries: int = 3) -> None:
 
 
 async def _save_ads(ads: List[Dict[str, Any]]) -> Tuple[int, int]:
-    """Return (inserted, updated) based on upserts/modifies."""
     if not ads:
         return 0, 0
 
@@ -160,10 +147,7 @@ async def _save_ads(ads: List[Dict[str, Any]]) -> Tuple[int, int]:
 
 
 async def scrape_keyword(keyword: str, limit: int) -> Dict[str, int]:
-    """Scrape one keyword and save to Mongo.
 
-    Returns dict: {found, inserted, updated}
-    """
     total_found = 0
     page_num = 1
 

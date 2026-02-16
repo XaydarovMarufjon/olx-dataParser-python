@@ -1,12 +1,8 @@
 from __future__ import annotations
-
 from motor.motor_asyncio import AsyncIOMotorClient
-
 from config import settings
 
-
 def _mask_mongo_uri(uri: str) -> str:
-    # mongodb+srv://user:pass@host/...  -> mask pass
     try:
         if "@" not in uri or "://" not in uri:
             return uri
@@ -21,7 +17,6 @@ def _mask_mongo_uri(uri: str) -> str:
     except Exception:
         return uri
 
-
 class Database:
     def __init__(self):
         self.client: AsyncIOMotorClient | None = None
@@ -33,7 +28,6 @@ class Database:
         self.db = self.client[settings.database_name]
         self.ads = self.db[settings.ads_collection]
 
-        # ping
         await self.db.command("ping")
 
         print(
@@ -45,14 +39,11 @@ class Database:
             settings.ads_collection,
         )
 
-        # duplicate oldini olish uchun unique index
-        # background=True - eskirgan pymongo opsiyasi bo'lishi mumkin; motor/pymongo o'zi fon rejimida yaratadi
         await self.ads.create_index([("link", 1)], unique=True, name="uniq_link")
         print("Index tekshirildi/yaratildi: uniq_link (link UNIQUE)")
 
     async def close(self):
         if self.client:
             self.client.close()
-
 
 db = Database()
